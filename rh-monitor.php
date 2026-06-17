@@ -5,7 +5,7 @@
  * Plugin URI:        https://github.com/herbeckrobin/rh-monitor
  * Update URI:        https://github.com/herbeckrobin/rh-monitor
  * Description:       Server-seitiges PHP-Error-Tracking (Sentry-SDK zu GlitchTip) plus Health-Endpoint. Teil der rh-blueprint Kollektion.
- * Version:           0.1.3
+ * Version:           0.1.4
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Author:            Robin Herbeck
@@ -21,7 +21,7 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-define('RHMONITOR_VERSION', '0.1.3');
+define('RHMONITOR_VERSION', '0.1.4');
 define('RHMONITOR_PLUGIN_FILE', __FILE__);
 define('RHMONITOR_PLUGIN_DIR', plugin_dir_path(__FILE__));
 
