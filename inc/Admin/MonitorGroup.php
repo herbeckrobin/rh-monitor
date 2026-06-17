@@ -62,7 +62,7 @@ final class MonitorGroup implements GroupInterface
                 id: self::FIELD_DSN,
                 type: SettingField::TYPE_URL,
                 label: __('GlitchTip DSN (PHP)', 'rh-monitor'),
-                description: __('Die DSN deines GlitchTip-Projekts, z.B. https://<key>@errors.deine-domain.de/<id>. Leer = aus.', 'rh-monitor'),
+                description: __('Die DSN deines GlitchTip-Projekts, z.B. https://<key>@errors.deine-domain.de/<id>. Leer = aus. Empfehlung: ein eigenes GlitchTip-Projekt für PHP/Server, getrennt vom Browser-Tracking (rh-tracking), sonst mischen sich Server- und Client-Fehler im selben Projekt.', 'rh-monitor'),
                 default: '',
                 keywords: ['dsn', 'glitchtip', 'sentry', 'endpoint'],
             ),
