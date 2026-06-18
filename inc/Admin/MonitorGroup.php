@@ -13,6 +13,10 @@ use RhBlueprint\Core\Settings\SettingField;
  * Error-Tracking ist erst aktiv, wenn eine DSN gesetzt ist (ohne DSN passiert
  * nichts, kein externer Verkehr). Environment und Release fallen ohne Angabe auf
  * sinnvolle Werte zurück (wp_get_environment_type bzw. die Domain).
+ *
+ * Zwei Fehlerquellen, ein Modul: PHP-Fehler über das Server-SDK, JavaScript-Fehler
+ * der Besucher über das lokal ausgelieferte Sentry-Browser-SDK. Beide melden an
+ * GlitchTip, mit getrennten DSNs (idealerweise getrennte GlitchTip-Projekte).
  */
 final class MonitorGroup implements GroupInterface
 {
@@ -23,6 +27,8 @@ final class MonitorGroup implements GroupInterface
     public const FIELD_ENVIRONMENT = 'environment';
     public const FIELD_RELEASE = 'release';
     public const FIELD_TRACES = 'traces_sample_rate';
+    public const FIELD_BROWSER_ENABLED = 'browser_enabled';
+    public const FIELD_BROWSER_DSN = 'browser_dsn';
     public const FIELD_HEALTH_ENABLED = 'health_enabled';
     public const FIELD_HEALTH_PATH = 'health_path';
     public const FIELD_HEALTH_TOKEN = 'health_token';
@@ -62,7 +68,7 @@ final class MonitorGroup implements GroupInterface
                 id: self::FIELD_DSN,
                 type: SettingField::TYPE_URL,
                 label: __('GlitchTip DSN (PHP)', 'rh-monitor'),
-                description: __('Die DSN deines GlitchTip-Projekts, z.B. https://<key>@errors.deine-domain.de/<id>. Leer = aus. Empfehlung: ein eigenes GlitchTip-Projekt für PHP/Server, getrennt vom Browser-Tracking (rh-tracking), sonst mischen sich Server- und Client-Fehler im selben Projekt.', 'rh-monitor'),
+                description: __('Die DSN deines GlitchTip-Projekts für Server-Fehler, z.B. https://<key>@errors.deine-domain.de/<id>. Leer = aus. Empfehlung: ein eigenes GlitchTip-Projekt für PHP/Server, getrennt vom Browser-Tracking unten, sonst mischen sich Server- und Client-Fehler im selben Projekt.', 'rh-monitor'),
                 default: '',
                 keywords: ['dsn', 'glitchtip', 'sentry', 'endpoint'],
             ),
@@ -89,6 +95,22 @@ final class MonitorGroup implements GroupInterface
                 description: __('Performance-Tracing-Anteil von 0 bis 1. Standard 0 (nur Fehler, kein Tracing).', 'rh-monitor'),
                 default: '0',
                 keywords: ['traces', 'performance', 'sample'],
+            ),
+            new SettingField(
+                id: self::FIELD_BROWSER_ENABLED,
+                type: SettingField::TYPE_BOOLEAN,
+                label: __('Browser-Error-Tracking aktivieren', 'rh-monitor'),
+                description: __('Meldet JavaScript-Fehler der Besucher an GlitchTip. Das Sentry-Browser-SDK wird lokal ausgeliefert (kein CDN, DSGVO). Wirkt nur, wenn unten eine Browser-DSN gesetzt ist.', 'rh-monitor'),
+                default: false,
+                keywords: ['browser', 'javascript', 'client', 'error', 'glitchtip', 'sentry'],
+            ),
+            new SettingField(
+                id: self::FIELD_BROWSER_DSN,
+                type: SettingField::TYPE_URL,
+                label: __('GlitchTip DSN (Browser)', 'rh-monitor'),
+                description: __('Die DSN deines GlitchTip-Projekts für Browser-Fehler. Leer = aus. Environment und Release teilt sich das Browser-Tracking mit dem PHP-Tracking oben.', 'rh-monitor'),
+                default: '',
+                keywords: ['dsn', 'browser', 'glitchtip', 'sentry'],
             ),
             new SettingField(
                 id: self::FIELD_HEALTH_ENABLED,

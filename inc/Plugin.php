@@ -28,6 +28,7 @@ final class Plugin
         // vor dem Template antwortet.
         add_action('plugins_loaded', [Monitor::class, 'initSentry'], 5);
         add_action('init', [Monitor::class, 'maybeHealth'], 0);
+        add_action('wp_enqueue_scripts', [Monitor::class, 'enqueueBrowser'], 5);
 
         add_action('rh-blueprint/core/booted', [self::class, 'onCoreBooted']);
     }

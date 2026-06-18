@@ -58,6 +58,58 @@ final class Monitor
         ]);
     }
 
+    /**
+     * Browser-Error-Tracking: lädt das lokal gehostete Sentry-Browser-SDK und
+     * initialisiert es im Frontend. Kein CDN (DSGVO), no-op ohne Browser-DSN.
+     * Environment und Release teilen sich Browser- und PHP-Tracking.
+     */
+    public static function enqueueBrowser(): void
+    {
+        if (is_admin() || ! function_exists('rhbp_setting')) {
+            return;
+        }
+        if (! (bool) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_BROWSER_ENABLED, false)) {
+            return;
+        }
+
+        $dsn = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_BROWSER_DSN, ''));
+        if ($dsn === '') {
+            return;
+        }
+
+        $abs = RHMONITOR_PLUGIN_DIR . 'assets/vendor/sentry.min.js';
+        if (! file_exists($abs)) {
+            return;
+        }
+
+        wp_enqueue_script(
+            'rh-monitor-glitchtip-browser',
+            RHMONITOR_PLUGIN_URL . 'assets/vendor/sentry.min.js',
+            [],
+            (string) filemtime($abs),
+            ['strategy' => 'defer', 'in_footer' => false]
+        );
+
+        $environment = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_ENVIRONMENT, ''));
+        if ($environment === '') {
+            $environment = function_exists('wp_get_environment_type') ? wp_get_environment_type() : 'production';
+        }
+
+        $release = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_RELEASE, ''));
+        if ($release === '') {
+            $release = (string) wp_parse_url(home_url('/'), PHP_URL_HOST);
+        }
+
+        $init = sprintf(
+            'if(window.Sentry){Sentry.init({dsn:%s,tracesSampleRate:0,replaysSessionSampleRate:0,environment:%s,release:%s});}',
+            wp_json_encode($dsn),
+            wp_json_encode($environment),
+            wp_json_encode($release)
+        );
+
+        wp_add_inline_script('rh-monitor-glitchtip-browser', $init);
+    }
+
     public static function maybeHealth(): void
     {
         if (! function_exists('rhbp_setting')) {
