@@ -1,0 +1,229 @@
+/*
+ * rh-monitor, Dashboard im Monitor-Tab.
+ *
+ * Im Look der Sync-/Tracking-Seiten: Intro (rhbp-pane-intro) + Sektionen als
+ * rhbp-card mit icon-Titeln. Nur der Log-Viewer ist modul-spezifisch (Monospace,
+ * scrollbar, Level-Farben), der Rest nutzt Core-Komponenten und -Tokens. Alles
+ * unter .rhbp-settings gescopt, nichts wandert ins globale Core-CSS.
+ */
+
+/* ---- Dienst-Reihen (oben, Look der Tracking-Seite) -------------------- */
+.rhbp-settings .rhbp-monitor-services__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 28px;
+}
+
+.rhbp-settings .rhmon-service {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+}
+
+.rhbp-settings .rhmon-service__brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+}
+
+.rhbp-settings .rhmon-service__icon {
+    width: 22px;
+    height: 22px;
+    color: var(--rhbp-muted);
+}
+
+.rhbp-settings .rhmon-service__logo {
+    height: 22px;
+    width: auto;
+    max-width: 104px;
+    object-fit: contain;
+    flex: none;
+}
+
+.rhbp-settings .rhmon-service__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.rhbp-settings .rhmon-service__text strong {
+    font-size: 14px;
+    color: var(--rhbp-ink);
+}
+
+.rhbp-settings .rhmon-service__text span {
+    font-size: 12px;
+    color: var(--rhbp-muted);
+}
+
+.rhbp-settings .rhmon-service__actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+/* ---- Modal-Kopf-Logo (Anbieter) -------------------------------------- */
+.rhbp-settings .rhmon-modal-logo {
+    height: 22px;
+    width: auto;
+    max-width: 110px;
+    object-fit: contain;
+    flex: none;
+}
+
+/* ---- Token-Zeile (Generieren + Kopieren) ------------------------------ */
+.rhbp-settings .rhmon-token {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+
+.rhbp-settings .rhmon-token input {
+    flex: 1;
+    min-width: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Switch (rhbp-switch / rhbp-toggle-form) kommt jetzt aus dem Core. */
+
+/* Modal-Abschnittsueberschrift */
+.rhbp-settings .rhmon-modal-section {
+    margin: 20px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--rhbp-border);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--rhbp-faint);
+}
+
+.rhbp-settings .rhmon-modal-section:first-child {
+    margin-top: 0;
+}
+
+.rhbp-settings .rhmon-status {
+    margin-bottom: 16px;
+}
+
+.rhbp-settings .rhmon-meta {
+    row-gap: 9px;
+}
+
+/* ---- Log-Karte -------------------------------------------------------- */
+.rhbp-settings .rhmon-clear {
+    margin: 0;
+}
+
+.rhbp-settings .rhmon-logmeta {
+    margin: 0 0 12px;
+    font-size: 12px;
+    color: var(--rhbp-muted);
+}
+
+.rhbp-settings .rhmon-logmeta code {
+    font-size: 12px;
+    background: var(--rhbp-bg-subtle);
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.rhbp-settings .rhmon-logcard .rhbp-card__head {
+    margin-bottom: 14px;
+}
+
+/* ---- Log-Viewer (sitzt in der Karte, kein eigener Rahmen) ------------- */
+.rhbp-settings .rhmon-log {
+    max-height: 460px;
+    overflow: auto;
+}
+
+.rhbp-settings .rhmon-log:focus-visible {
+    outline: 2px solid var(--rhbp-blue);
+    outline-offset: 2px;
+    border-radius: var(--rhbp-radius-sm);
+}
+
+.rhbp-settings .rhmon-entry {
+    padding: 9px 11px;
+    border-left: 3px solid var(--rhbp-border-strong);
+    border-radius: var(--rhbp-radius-sm);
+    background: var(--rhbp-bg-subtle);
+    margin-bottom: 6px;
+}
+
+.rhbp-settings .rhmon-entry:last-child {
+    margin-bottom: 0;
+}
+
+.rhbp-settings .rhmon-entry__head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 5px;
+}
+
+.rhbp-settings .rhmon-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--rhbp-border);
+    color: var(--rhbp-muted);
+    white-space: nowrap;
+}
+
+.rhbp-settings .rhmon-time {
+    font-size: 11px;
+    color: var(--rhbp-faint);
+}
+
+.rhbp-settings .rhmon-body {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--rhbp-text);
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Level-Farben: linke Kante + Badge */
+.rhbp-settings .rhmon-entry--fatal,
+.rhbp-settings .rhmon-entry--db {
+    border-left-color: var(--rhbp-red-fg);
+    background: var(--rhbp-red-bg);
+}
+
+.rhbp-settings .rhmon-entry--fatal .rhmon-badge,
+.rhbp-settings .rhmon-entry--db .rhmon-badge {
+    background: var(--rhbp-red-fg);
+    color: #fff;
+}
+
+.rhbp-settings .rhmon-entry--warning {
+    border-left-color: var(--rhbp-amber-fg);
+    background: var(--rhbp-amber-bg);
+}
+
+.rhbp-settings .rhmon-entry--warning .rhmon-badge {
+    background: var(--rhbp-amber-fg);
+    color: #fff;
+}
+
+.rhbp-settings .rhmon-entry--deprecated,
+.rhbp-settings .rhmon-entry--notice {
+    border-left-color: var(--rhbp-blue);
+}
+
+.rhbp-settings .rhmon-entry--deprecated .rhmon-badge,
+.rhbp-settings .rhmon-entry--notice .rhmon-badge {
+    background: var(--rhbp-blue-soft);
+    color: var(--rhbp-blue);
+}

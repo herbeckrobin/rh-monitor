@@ -19,61 +19,75 @@ use RhMonitor\Admin\MonitorGroup;
  */
 final class Monitor
 {
+    /**
+     * Server-Error-Tracking. Anbieter laufen parallel: an JEDEN aktiven Anbieter
+     * mit gesetzter Server-DSN wird gemeldet. Das SDK kennt nur einen globalen
+     * Client (registriert die Fehler-Handler), darum geht der erste Anbieter über
+     * \Sentry\init() und die weiteren bekommen das Event im before_send weitergereicht
+     * (eigene Clients via ClientBuilder, flush beim Shutdown).
+     */
     public static function initSentry(): void
     {
         if (! function_exists('rhbp_setting') || ! function_exists('Sentry\init')) {
             return;
         }
-        if (! (bool) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_ENABLED, true)) {
-            return;
+
+        $dsns = self::activeDsns(false);
+        if ($dsns === []) {
+            return; // Kein aktiver Anbieter mit DSN, kein externer Verkehr.
         }
 
-        $dsn = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_DSN, ''));
-        if ($dsn === '') {
-            return; // Ohne DSN kein Tracking, kein externer Verkehr.
-        }
-
-        $environment = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_ENVIRONMENT, ''));
-        if ($environment === '') {
-            $environment = function_exists('wp_get_environment_type') ? wp_get_environment_type() : 'production';
-        }
-
-        $release = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_RELEASE, ''));
-        if ($release === '') {
-            $release = (string) wp_parse_url(home_url('/'), PHP_URL_HOST);
-        }
-
-        $traces = (float) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_TRACES, '0');
-
-        \Sentry\init([
-            'dsn' => $dsn,
-            'environment' => $environment,
-            'release' => $release,
-            'traces_sample_rate' => max(0.0, min(1.0, $traces)),
+        $base = [
+            'environment' => self::environment(),
+            'traces_sample_rate' => 0.0,
             'send_default_pii' => false,
-            'before_send' => static function ($event) {
+        ];
+        $release = self::release();
+        if ($release !== '') {
+            $base['release'] = $release;
+        }
+
+        // Weitere Anbieter (ab dem zweiten) als eigene Clients.
+        $extra = [];
+        foreach (array_slice($dsns, 1) as $dsn) {
+            $extra[] = \Sentry\ClientBuilder::create(array_merge($base, ['dsn' => $dsn]))->getClient();
+        }
+
+        \Sentry\init(array_merge($base, [
+            'dsn' => $dsns[0],
+            'before_send' => static function ($event) use ($extra) {
+                foreach ($extra as $client) {
+                    $client->captureEvent($event);
+                }
+
                 /** @var mixed $event */
                 return apply_filters('rh-blueprint/monitor/before_send', $event);
             },
-        ]);
+        ]));
+
+        if ($extra !== []) {
+            register_shutdown_function(static function () use ($extra): void {
+                foreach ($extra as $client) {
+                    $client->flush();
+                }
+            });
+        }
     }
 
     /**
-     * Browser-Error-Tracking: lädt das lokal gehostete Sentry-Browser-SDK und
-     * initialisiert es im Frontend. Kein CDN (DSGVO), no-op ohne Browser-DSN.
-     * Environment und Release teilen sich Browser- und PHP-Tracking.
+     * Browser-Error-Tracking: lädt das lokal gehostete Sentry-Browser-SDK (kein CDN,
+     * DSGVO) und meldet parallel an jeden aktiven Anbieter mit Browser-DSN. Erster
+     * Anbieter über Sentry.init (fängt window.onerror), weitere als eigene
+     * BrowserClient-Instanzen, denen das Event im beforeSend weitergereicht wird.
      */
     public static function enqueueBrowser(): void
     {
         if (is_admin() || ! function_exists('rhbp_setting')) {
             return;
         }
-        if (! (bool) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_BROWSER_ENABLED, false)) {
-            return;
-        }
 
-        $dsn = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_BROWSER_DSN, ''));
-        if ($dsn === '') {
+        $dsns = self::activeDsns(true);
+        if ($dsns === []) {
             return;
         }
 
@@ -90,24 +104,65 @@ final class Monitor
             ['strategy' => 'defer', 'in_footer' => false]
         );
 
+        $release = self::release();
+        $releasePart = $release !== '' ? ',release:' . wp_json_encode($release) : '';
+
+        // d[0] über Sentry.init (fängt window.onerror), d[1..] als eigene Clients je
+        // mit eigenem Scope (offizielles Multi-Instance-Pattern: scope.setClient +
+        // scope.captureEvent), beforeSend reicht das Event an diese Scopes weiter.
+        $init = '(function(){var S=window.Sentry;if(!S||!S.init){return;}'
+            . 'var d=' . wp_json_encode($dsns) . ';if(!d.length){return;}'
+            . 'var extra=d.slice(1).map(function(dsn){try{'
+            . 'var c=new S.BrowserClient({dsn:dsn,transport:S.makeFetchTransport,stackParser:S.defaultStackParser,'
+            . 'integrations:S.getDefaultIntegrations({}).filter(function(i){return i.name==="InboundFilters"||i.name==="FunctionToString";})});'
+            . 'var sc=new S.Scope();sc.setClient(c);c.init();return sc;'
+            . '}catch(e){return null;}}).filter(Boolean);'
+            . 'S.init({dsn:d[0],environment:' . wp_json_encode(self::environment()) . $releasePart . ',tracesSampleRate:0,replaysSessionSampleRate:0,beforeSend:function(event){extra.forEach(function(sc){try{sc.captureEvent(event);}catch(e){}});return event;}});'
+            . '})();';
+
+        wp_add_inline_script('rh-monitor-glitchtip-browser', $init);
+    }
+
+    /**
+     * Aktive DSNs aller eingeschalteten Anbieter, in Anbieter-Reihenfolge.
+     *
+     * @return list<string>
+     */
+    private static function activeDsns(bool $browser): array
+    {
+        $dsns = [];
+        foreach (Providers::IDS as $id) {
+            if (! (bool) rhbp_setting(MonitorGroup::GROUP_ID, Providers::enabledKey($id), false)) {
+                continue;
+            }
+            $key = $browser ? Providers::browserDsnKey($id) : Providers::dsnKey($id);
+            $dsn = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, $key, ''));
+            if ($dsn !== '') {
+                $dsns[] = $dsn;
+            }
+        }
+
+        return $dsns;
+    }
+
+    private static function environment(): string
+    {
         $environment = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_ENVIRONMENT, ''));
         if ($environment === '') {
             $environment = function_exists('wp_get_environment_type') ? wp_get_environment_type() : 'production';
         }
 
+        return $environment;
+    }
+
+    private static function release(): string
+    {
         $release = trim((string) rhbp_setting(MonitorGroup::GROUP_ID, MonitorGroup::FIELD_RELEASE, ''));
-        if ($release === '') {
-            $release = (string) wp_parse_url(home_url('/'), PHP_URL_HOST);
+        if ($release === '' && defined('RH_MONITOR_RELEASE')) {
+            $release = (string) constant('RH_MONITOR_RELEASE');
         }
 
-        $init = sprintf(
-            'if(window.Sentry){Sentry.init({dsn:%s,tracesSampleRate:0,replaysSessionSampleRate:0,environment:%s,release:%s});}',
-            wp_json_encode($dsn),
-            wp_json_encode($environment),
-            wp_json_encode($release)
-        );
-
-        wp_add_inline_script('rh-monitor-glitchtip-browser', $init);
+        return $release;
     }
 
     public static function maybeHealth(): void
