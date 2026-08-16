@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace RhMonitor\Admin;
 
+use RhBlueprint\Core\Admin\Ui;
+use RhBlueprint\Core\Admin\Guard;
 use RhBlueprint\Core\Settings\SettingsPage;
 use RhMonitor\Providers;
 
@@ -119,11 +121,12 @@ final class MonitorServicesPage
         wp_nonce_field(self::NONCE_TOGGLE);
         echo '<input type="hidden" name="action" value="rhbp_monitor_toggle">';
         echo '<input type="hidden" name="service" value="' . esc_attr($service) . '">';
-        printf(
-            '<label class="rhbp-switch" title="%s"><input type="checkbox" name="enabled" value="1" %s onchange="this.form.submit()"><span class="rhbp-switch__track" aria-hidden="true"></span></label>',
-            esc_attr($toggleLabel),
-            checked($toggleOn, true, false),
-        );
+        echo Ui::switch([
+            'name' => 'enabled',
+            'checked' => $toggleOn,
+            'title' => $toggleLabel,
+            'input' => ['onchange' => 'this.form.submit()'],
+        ]);
         echo '</form>';
 
         echo '<button type="button" class="rhbp-btn rhbp-btn--ghost rhbp-btn--icon" data-rhbp-modal-open="' . esc_attr($modalId) . '" title="' . esc_attr__('Konfigurieren', 'rh-monitor') . '" aria-label="' . esc_attr__('Konfigurieren', 'rh-monitor') . '">' . $this->icon('gear') . '</button>';
@@ -254,10 +257,7 @@ final class MonitorServicesPage
 
     public function handleToggle(): void
     {
-        if (! current_user_can(self::CAPABILITY)) {
-            wp_die(esc_html__('Keine Berechtigung.', 'rh-monitor'));
-        }
-        check_admin_referer(self::NONCE_TOGGLE);
+        Guard::form(self::NONCE_TOGGLE, self::CAPABILITY);
 
         $service = isset($_POST['service']) ? sanitize_key(wp_unslash($_POST['service'])) : '';
         $on = isset($_POST['enabled']);
@@ -274,10 +274,7 @@ final class MonitorServicesPage
 
     public function handleSave(): void
     {
-        if (! current_user_can(self::CAPABILITY)) {
-            wp_die(esc_html__('Keine Berechtigung.', 'rh-monitor'));
-        }
-        check_admin_referer(self::NONCE_SAVE);
+        Guard::form(self::NONCE_SAVE, self::CAPABILITY);
 
         $service = isset($_POST['service']) ? sanitize_key(wp_unslash($_POST['service'])) : '';
 
@@ -322,6 +319,13 @@ final class MonitorServicesPage
 
     private function icon(string $name, string $extraClass = ''): string
     {
+        // Geteilte Symbole kommen aus dem Core, damit derselbe Knopf überall
+        // dieselbe Form hat. Papierkorb, Kopieren und Neu laden waren vorher
+        // in mehreren Modulen mehrere Zeichnungen.
+        if (Ui::hasIcon($name)) {
+            return Ui::icon($name, '', $extraClass);
+        }
+
         $paths = [
             'heart' => '<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.5 1-1.1a5.5 5.5 0 0 0 0-7.8z"/>',
             'gear' => '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>',

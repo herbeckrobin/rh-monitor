@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace RhMonitor;
 
 use RhBlueprint\Core\Core;
+use RhBlueprint\Core\UpdateChecker;
 use RhBlueprint\Core\Settings\SettingsPage;
 use RhMonitor\Admin\MonitorDashboard;
 use RhMonitor\Admin\MonitorServicesPage;
@@ -21,9 +22,9 @@ final class Plugin
 {
     public static function boot(): void
     {
-        if (class_exists(UpdateChecker::class)) {
-            (new UpdateChecker())->boot();
-        }
+        add_action('plugins_loaded', static function (): void {
+            (new UpdateChecker('rh-monitor', RHMONITOR_PLUGIN_FILE))->boot();
+        }, 0);
 
         // Früh, damit möglichst viele Fehler erfasst werden bzw. der Health-Check
         // vor dem Template antwortet. Migration läuft vor initSentry (prio 1 < 5).

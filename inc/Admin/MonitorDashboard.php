@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace RhMonitor\Admin;
 
+use RhBlueprint\Core\Admin\Ui;
+use RhBlueprint\Core\Admin\Assets;
+use RhBlueprint\Core\Admin\Guard;
 use RhBlueprint\Core\Settings\SettingsPage;
 use RhMonitor\Health\HealthReport;
 use RhMonitor\Log\DebugLogReader;
@@ -42,8 +45,7 @@ final class MonitorDashboard
 
     public function enqueue(string $hook): void
     {
-        $page = isset($_GET['page']) ? sanitize_key((string) $_GET['page']) : '';
-        if ($page !== SettingsPage::MENU_SLUG) {
+        if (! Assets::onSettings()) {
             return;
         }
 
@@ -199,10 +201,7 @@ final class MonitorDashboard
 
     public function handleClear(): void
     {
-        if (! current_user_can(self::CAPABILITY)) {
-            wp_die(esc_html__('Keine Berechtigung.', 'rh-monitor'));
-        }
-        check_admin_referer(self::NONCE_CLEAR);
+        Guard::form(self::NONCE_CLEAR, self::CAPABILITY);
 
         $ok = $this->log->clear();
         $this->redirect($ok ? 'monitor_log_cleared' : 'monitor_log_failed');
@@ -250,6 +249,13 @@ final class MonitorDashboard
      */
     private function icon(string $name, bool $small = false): string
     {
+        // Geteilte Symbole kommen aus dem Core, damit derselbe Knopf überall
+        // dieselbe Form hat. Papierkorb, Kopieren und Neu laden waren vorher
+        // in mehreren Modulen mehrere Zeichnungen.
+        if (Ui::hasIcon($name)) {
+            return Ui::icon($name, $small ? 'sm' : '');
+        }
+
         $paths = [
             'activity' => '<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',
             'sliders' => '<line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/>',
