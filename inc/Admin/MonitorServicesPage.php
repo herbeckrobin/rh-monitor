@@ -142,7 +142,6 @@ final class MonitorServicesPage
         $logo = sprintf('<img class="rhmon-modal-logo" src="%s" alt="%s">', esc_url($this->logoUrl($p['logo'])), esc_attr($p['name']));
         $this->modalOpen('rhbp-modal-' . $id, $logo, $p['name'], $p['note'], $id);
 
-        echo '<div class="rhbp-modal__body">';
         $this->field(
             Providers::dsnKey($id),
             'url',
@@ -165,8 +164,6 @@ final class MonitorServicesPage
             ),
         );
         echo '<div class="rhbp-callout rhbp-callout--info">' . $this->icon('info', 'rhbp-ico--sm') . '<span>' . esc_html__('Environment wird automatisch erkannt (production/staging). Release optional über die Konstante RH_MONITOR_RELEASE in der wp-config.php.', 'rh-monitor') . '</span></div>';
-        echo '</div>';
-
         $this->modalClose();
     }
 
@@ -174,7 +171,6 @@ final class MonitorServicesPage
     {
         $this->modalOpen('rhbp-modal-health', $this->icon('heart'), __('Health-Endpoint', 'rh-monitor'), __('JSON-Endpoint für externes Uptime-Monitoring.', 'rh-monitor'), 'health');
 
-        echo '<div class="rhbp-modal__body">';
         $this->field(MonitorGroup::FIELD_HEALTH_PATH, 'text', __('Health-Pfad', 'rh-monitor'), __('URL-Pfad des Endpoints, Standard /health.', 'rh-monitor'), '/health');
 
         $tokenId = 'rhmon-' . MonitorGroup::FIELD_HEALTH_TOKEN;
@@ -189,23 +185,23 @@ final class MonitorServicesPage
         echo '<p class="rhbp-hint">' . esc_html__('Wenn gesetzt, muss der Endpoint mit ?token=... aufgerufen werden. Schützt vor öffentlichem Zugriff.', 'rh-monitor') . '</p>';
         echo '</div>';
 
-        echo '</div>';
         $this->modalClose();
     }
 
+    /**
+     * Huelle und Formular kommen aus dem Core, hier bleibt nur, was diesem
+     * Dienst gehoert: das Logo im Kopf und die versteckten Felder.
+     */
     private function modalOpen(string $id, string $visual, string $title, string $sub, string $service): void
     {
-        echo '<div class="rhbp-modal-backdrop" id="' . esc_attr($id) . '" data-rhbp-modal-backdrop>';
-        echo '<div class="rhbp-modal" role="dialog" aria-modal="true" aria-label="' . esc_attr($title) . '">';
+        echo Ui::modalOpen([
+            'id' => $id,
+            'title' => $title,
+            'subtitle' => $sub,
+            'iconMarkup' => $visual,
+            'form' => admin_url('admin-post.php'),
+        ]);
 
-        echo '<div class="rhbp-modal__head">';
-        echo '<div class="rhbp-modal__head-l">' . $visual;
-        echo '<div><h3 class="rhbp-modal__title">' . esc_html($title) . '</h3><p class="rhbp-modal__sub">' . esc_html($sub) . '</p></div>';
-        echo '</div>';
-        echo '<button type="button" class="rhbp-btn rhbp-btn--ghost rhbp-btn--icon" data-rhbp-modal-close aria-label="' . esc_attr__('Schließen', 'rh-monitor') . '">' . $this->icon('close') . '</button>';
-        echo '</div>';
-
-        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
         wp_nonce_field(self::NONCE_SAVE);
         echo '<input type="hidden" name="action" value="rhbp_monitor_save">';
         echo '<input type="hidden" name="service" value="' . esc_attr($service) . '">';
@@ -213,12 +209,11 @@ final class MonitorServicesPage
 
     private function modalClose(): void
     {
-        echo '<div class="rhbp-modal__foot">';
-        echo '<button type="button" class="rhbp-btn rhbp-btn--ghost" data-rhbp-modal-close>' . esc_html__('Abbrechen', 'rh-monitor') . '</button>';
-        echo '<button type="submit" class="rhbp-btn rhbp-btn--primary">' . esc_html__('Speichern', 'rh-monitor') . '</button>';
-        echo '</div>';
-        echo '</form>';
-        echo '</div></div>';
+        echo Ui::modalClose([
+            'primary' => __('Speichern', 'rh-monitor'),
+            'cancel' => __('Abbrechen', 'rh-monitor'),
+            'form' => true,
+        ]);
     }
 
     private function field(string $key, string $type, string $label, string $hint, string $default = ''): void

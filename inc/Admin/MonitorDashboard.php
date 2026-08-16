@@ -45,7 +45,7 @@ final class MonitorDashboard
 
     public function enqueue(string $hook): void
     {
-        if (! Assets::onSettings()) {
+        if (! Assets::onSettings(self::TAB)) {
             return;
         }
 
